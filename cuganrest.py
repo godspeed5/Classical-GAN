@@ -12,6 +12,7 @@ from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras import utils
 import tensorflow as tf
+import pretty_midi
 gpus = tf.config.experimental.list_physical_devices('GPU')
 for gpu in gpus:
         tf.config.experimental.set_memory_growth(gpu, True)
@@ -20,7 +21,7 @@ def get_notes():
     """ Get all the notes and chords from the midi files """
     notes = []
 
-    for file in glob.glob("data1/signe*.mid"):
+    for file in glob.glob("data1/parker*.mid"):
         midi = converter.parse(file)
 
         print("Parsing %s" % file)
@@ -31,7 +32,7 @@ def get_notes():
             s2 = instrument.partitionByInstrument(midi)
             notes_to_parse = s2.parts[0].recurse() 
         except: # file has notes in a flat structure
-            notes_to_parse = midi.flat.notes
+            notes_to_parse = midi.flat.notesAndRests
             
         for element in notes_to_parse:
             if isinstance(element, note.Note):
@@ -125,7 +126,7 @@ def create_midi(prediction_output, filename):
             new_chord = chord.Chord(notes)
             new_chord.offset = offset
             output_notes.append(new_chord)
-        if pattern == ' ':
+        elif pattern == ' ':
             new_note = note.Rest()
             output_notes.append(new_note)
         # pattern is a note
@@ -272,7 +273,7 @@ class GAN():
         pred_notes = [((x+1)*(n_vocab)/2) for x in predictions[0]]
         pred_notes = [int_to_note[int(x)] for x in pred_notes]
         
-        create_midi(pred_notes, 'gan_final_signe_10')
+        create_midi(pred_notes, 'gan_final_parker_500')
         
     def plot_loss(self):
         plt.plot(self.disc_loss, c='red')
@@ -286,4 +287,4 @@ class GAN():
 
 if __name__ == '__main__':
   gan = GAN(rows=100)    
-  gan.train(epochs=10, batch_size=32, sample_interval=1)
+  gan.train(epochs=500, batch_size=32, sample_interval=1)
