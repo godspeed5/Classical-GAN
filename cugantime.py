@@ -3,6 +3,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
+import pypianoroll
 import glob
 from music21 import converter, instrument, note, chord, stream, duration
 from tensorflow.keras.layers import Input, Dense, Reshape, Dropout, LSTM, Bidirectional
@@ -24,6 +25,29 @@ def get_notes():
     durations = []
 
     for file in glob.glob("MIDI/melody/*.mid"):
+        midi = converter.parse(file)
+
+        print("Parsing %s" % file)
+
+        notes_to_parse = None
+
+        try: # file has instrument parts
+            s2 = instrument.partitionByInstrument(midi)
+            notes_to_parse = s2.parts[0].recurse() 
+        except: # file has notes in a flat structure
+            notes_to_parse = midi.flat.notes
+            
+        for element in notes_to_parse:
+            if isinstance(element, note.Note):
+                notes.append(str(element.pitch))
+            # elif isinstance(element, note.Rest):
+                # notes.append(' ')
+            elif isinstance(element, chord.Chord):
+                notes.append('.'.join(str(n) for n in element.normalOrder))
+            durations.append(element.duration.type)
+
+
+    for file in glob.glob("data1/kris*.mid"):
         midi = converter.parse(file)
 
         print("Parsing %s" % file)
@@ -172,6 +196,11 @@ def create_midi(prediction_output_n, prediction_output_d, filename):
             print(offset)
     midi_stream = stream.Stream(output_notes)
     midi_stream.write('midi', fp='{}.mid'.format(filename))
+    midi_stream.measures(0,10).plot()
+    plt.savefig(filename+'_pr.png')
+    plt.show(midi_stream)
+    
+
 
 class GAN():
     def __init__(self, rows):
@@ -320,7 +349,7 @@ class GAN():
         pred_durs = [int_to_dur[int(x)] for x in pred_durs]
         print(np.shape(pred_durs))
         print(np.shape(pred_notes))
-        create_midi(pred_notes, pred_durs, 'gan_final_nottingham_500')
+        create_midi(pred_notes, pred_durs, 'gan_final_kris_c_100')
         
     def plot_loss(self):
         plt.plot(self.disc_loss, c='red')
@@ -331,7 +360,9 @@ class GAN():
         plt.ylabel('Loss')
         plt.savefig('GAN_Loss_per_Epoch_final.png', transparent=True)
         plt.close()
+    
 
 if __name__ == '__main__':
   gan = GAN(rows=32)    
-  gan.train(epochs=500, batch_size=32, sample_interval=1)
+  gan.train(epochs=100, batch_size=32, sample_interval=1)
+
